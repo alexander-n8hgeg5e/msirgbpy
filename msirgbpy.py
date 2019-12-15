@@ -59,6 +59,10 @@ from argparse import ArgumentParser
 from .platform.linux import *
 a=ArgumentParser()
 #a.add_argument("--is-present",help="unknown what this is")
+a.add_argument  ( "--testing", action="store_true",default=True,
+                  help="uses /tmp/msirgbpy.portfile to read/write to instead of the actual device"
+                )
+
 a.add_argument  ( "--disable", action="store_true",default=False,
                   help="disable the RGB subsystem altogether"
                 )
