@@ -67,8 +67,15 @@
 # If `bbb` is `001`,
 # all lightning is turned off, including the one on the motherboard itself.
 # `000` is always on.
+
+
 from os import get_terminal_size
 from argparse import ArgumentParser
+from re import sub
+from sys import exit
+from time import sleep
+from pprint import pprint
+
 a=ArgumentParser()
 #a.add_argument("--is-present",help="unknown what this is")
 a.add_argument  ( "--testing", action="store_true",default=True,
@@ -77,6 +84,25 @@ a.add_argument  ( "--testing", action="store_true",default=True,
 
 a.add_argument  ( "--disable", action="store_true",default=False,
                   help="disable the RGB subsystem altogether"
+                )
+a.add_argument  ( "--eat-the-cat-and-burn-the-house", action="store_true",default=False,
+                  help=
+                        "This software is untested und bugy as hell!\n"
+                        "I converted the program to python and i have not such\n"
+                        "a rgb controller.\n"
+                        "It's sure that there are many bad bugs\n"
+                        "Serious system damaging bugs should be expected\n"
+                        "You need to check the program by reading the code\n"
+                        "To verify that you did all precautions and that you\n"
+                        "are responsible for the consequences, you need to\n"
+                        "specify this argument run the program\n"
+                        "Without this the testing mode is the only mode the program\n"
+                        "does something.\n"
+                )
+a.add_argument  ( "-D","--debug", action="store",type=int,default=0,
+                  help="if debug > 0 , enables debugging\n"
+                       "some numbers overwrite /tmp/debuglog,\n"
+                       "and opens append mode for debugging with dp(msg)"
                 )
 a.add_argument  ( "-v","--verbose", action="store_true",default=False,
                   help=""
@@ -113,6 +139,13 @@ a.add_argument  (
 a.add_argument  (   "-i","--invhalf",type=str,default="",
                     help="syntax regex = \"^[rgb]*$\"\n"
                          "invert specified channels"
+                )
+a.add_argument  (   "-p","--prog",type=str,default=None,
+                    help="Select a internal program by number.\n"
+                         "To show avaiable one, see the --show option."
+                )
+a.add_argument  ( "-s","--show", action="store_true",default=False,
+                  help="Show the avaiable inernal progs"
                 )
 a.add_argument  (
                     "-f","--fade-in",type=str,default="",
@@ -155,31 +188,39 @@ def print(*z,end='',**zz):
     txt = str(*z)+end
     newline_pos_r=-1
     for i in range(len(txt),-1,-1):
-        if c=="\n":
+        if i == "\n" :
             newline_pos_r=i
             break
+
     newline_pos_l=-1
     for i in range(len(txt)):
-        if c=="\n":
+        if i == "\n" :
             newline_pos_l=i
             break
+
     w = get_terminal_size().columns
-    if newline_pos_r != -1:
+    l=len(sub("\\n","",txt))
+
+    if args.debug == 9:
+        if newline_pos_r != -1 or newline_pos_l != -1:
+            dp("find: "+str(newline_pos_l)+" "+str(l)+" "+str(newline_pos_r)+" hpos="+str(hpos)+"\n")
+
         # newline somewhere, need to check
         if newline_pos_l + hpos > w:
             # first newline would break to late
             # so first make fresh line
             o_print("\n"+txt)
             hpos=0
+            if args.debug==9:
+                dp('.d1.')
         else:
             # need to attend, that
             # pos is not hpos+len(txt) after print
             o_print(txt)
-            pos=newline_pos_r
+            pos = (l-newline_pos_r)
     else:
         # no newlines
         # so pos is hpos+len(txt) after print
-        l=len(txt)
         hpos_future=hpos+l
         if hpos_future > w:
             o_print()
@@ -200,7 +241,7 @@ def inb(port,verbose='args'):
     if verbose:
         global base_port
         offset = base_port - port
-        print("r({:x}{:+d},".format(verbose,base_port,offset))
+        print("r({:+d},".format(offset))
     global filehandle
     filehandle.seek(port)
     data = filehandle.read(1)
@@ -226,10 +267,12 @@ def outb(port,data,verbose='args'):
     if verbose:
         global base_port
         offset = base_port - port
-        print("w({:x}{:+d},".format(base_port,offset))
-    a = inb( base_port + 1,verbose=verbose)
+        print("w({:+d},".format(offset))
+    a = inb( base_port + 1,verbose=False)
     global filehandle
     filehandle.seek(port)
+    if args.debug==2:
+        print("#####."+str(port)+".####")
     t=type(data)
     if not t is bytes:
         if not t is int:
@@ -304,7 +347,7 @@ def run( base_port ):
     fade_in_blue  = False if not "b" in args.fade_in else True
 
     # Check if indeed a NCT6795D
-    if not args.ignorecheck:
+    if not args.ignorecheck and not args.testing:
         outb( base_port, REG_DEVID_MSB)
         msb = inb( base_port + 1)
         outb( base_port, REG_DEVID_LSB)
@@ -400,7 +443,10 @@ def print_all(filehandle,base_port):
                         (0x09,      0x20,   0x40),
                         (0x0b,      0x60,   0x70),
                     ]:
-        print("Bank {:02x} ({:02x}...{:02x})=".format(bank, s, e),end="\n")
+        print(end="\n")
+        bank_msg="Bank[{:02x}]({:02x}...{:02x})=".format(bank, s, e)
+        indent=len(bank_msg)
+        print(bank_msg,end="")
         outb(base_port, 0x07, verbose=False )
         outb(base_port + 1, bank,verbose=False)
         for x in range(101,116):
@@ -408,10 +454,16 @@ def print_all(filehandle,base_port):
             d = inb( base_port + 1,verbose=False)
             d=d[0]
             if x & 0xf == 0xf :
-                print("{:02x}".format(d ))
+                ptxt="{:02x}".format(d)
+                etxt="\n"+" "*indent
+                if args.debug == 9:
+                    dp('\nBREAK\nhpos:'+str(hpos)+'\n'+"ptxt="+repr(ptxt)+"\netxt="+repr(etxt)+"<<<\n\n")
+                print(ptxt,end=etxt)
             else:
-                print("{:02x} ".format(d ))
-        o_print()
+                ptxt="{:02x} ".format(d )
+                if args.debug == 9:
+                    dp('  hpos:'+str(hpos)+'  '+"ptxt="+repr(ptxt))
+                print(ptxt,end="")
 
 #fn print_all(f: &mut fs::File, base_port: u16) -> Result<()> {
 #    for &(bank, s, e) in &[(RGB_BANK, 0xd0, 0x100u16), (0x09, 0x20, 0x40), (0x0b, 0x60, 0x70)] {
@@ -434,7 +486,11 @@ def print_all(filehandle,base_port):
 #}
 #
 
-def run_wrap():
+def dp(msg):
+    with open('/tmp/debuglog','at') as dlf:
+        dlf.write(msg)
+
+def run_wrap(progs={}):
     """
     Wrapper which enables and disables the advanced mode
     """
@@ -443,7 +499,8 @@ def run_wrap():
     global filehandle
     open_device()
     try:
-        outb( base_port, b'\x87' )
+        outb( base_port, 0x87 )
+        outb( base_port, 0x87 )
     except:
         raise Exception("could not enable advanced mode")
 
@@ -468,8 +525,10 @@ def run_wrap():
 
     if args.verbose:
         print_all(filehandle, base_port)
-
-    r = run( base_port )
+    if not args.prog is None:
+        r = progs[args.prog](base_port)
+    else:
+        r = run( base_port )
     # Disable the advanced mode.
     try:
         outb( base_port, 0xAA)
@@ -509,6 +568,12 @@ def init():
     global hpos
     hpos=0
     parse_args()
+    if not args.testing and not args.eat_the_cat_and_burn_the_house:
+        print   (   
+                    "The program exits to protect the user."
+                    "Use the --help option to get some information"
+                )
+        exit()
     global printverbose
     printverbose=args.verbose
     global portfilepath
@@ -517,10 +582,25 @@ def init():
     else:
         portfilepath=default_portfilepath
 
+def internal_prog_1(*z,**zz):
+    while True:
+        run(*z,**zz)
+        args.invhalf="bg"
+        args.red="00000000"
+        args.green="00000000" 
+        args.green="00000000"
+        sleep(10)
+        args.invhalf="rb"
+        run(*z,**zz)
+
+progs={ "1" : internal_prog_1 }
 
 if __name__=='__main__':
     init()
-    run_wrap()
+    if args.show:
+        pprint(progs)
+        exit()
+    run_wrap(progs=progs)
     
     
 # vim: set syntax=python :
