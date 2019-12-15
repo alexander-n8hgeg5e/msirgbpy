@@ -1,8 +1,19 @@
 Utility for controlling RGB header on MSI boards
 
+!WARNING! Beware it's not done yet!
+
+v0.1.0_alpha
+
+ported to python, probably non working yet
+
+Needs adjustments to work with other os,
+but this should be a quick fix as python is very portable. 
+
+orignal coder:
 [How this utility came to be](http://kazlauskas.me/entries/i-reverse-engineered-a-motherboard.html)
 
-This utility not only works on any linux system you find around, it also is much more flexible than
+This ported utility is  only linux yet,
+...it also is much more flexible than
 the 7 colours MSI’s own Gaming App. Futhermore, unlike the MSI’s utility, this does not make your
 system vulnerable to anybody who cares to fiddle around the system.
 
@@ -37,18 +48,32 @@ If your board is not working, and your motherboard is not [on this
 list](https://github.com/nagisa/msi-rgb/issues?q=is%3Aissue+is%3Aopen+label%3Aboard), a new issue
 would be greatly appreciated.
 
-# How to compile and run
+# How to install and run
 
-To compile this project you’ll need rustc and cargo. Get them at your package manager or
-[here](https://www.rust-lang.org/en-US/install.html).
+Beware it's untested, and needs fixes.
+It could eat the cat.
 
-Then:
+Do install gentoo linux, further instruction on
+[gentoo](gentoo.org)
+Add the ebuild to your overlay or clone mine.
+Then use the package management system.
+
+OR:
+	Just copy/download the msirgbpy.py file.
+	Run it with python3.
+
+
+There you get original one:
 
 ```
 git clone https://github.com/nagisa/msi-rgb
 cd msi-rgb
 cargo build --release
 ```
+
+FURTHER DOWN HERE , THE DESCRIPTION PROBABLY NOT APPLIES ANYMORE.
+
+FIXME
 
 You’ll need root to run this program:
 
@@ -103,11 +128,6 @@ sudo ./target/release/msi-rgb 58e01c0d 504fdcb9 e4aa75eb --blink 2 -d 32
 ```
 echo -e "import colorsys, time, subprocess\ni=0\nwhile True:\n  subprocess.call(['target/release/msi-rgb', '-d511'] + list(map(lambda x: ('{0:01x}'.format(int(15*x)))*8, colorsys.hsv_to_rgb((i % 96.0) / 96.0, 0.9, 1))))\n  time.sleep(0.1)\n  i+=1" | sudo python -
 ```
-
-# Implementation
-
-For implementation details, including the registers used by super I/O and their meanings see the
-comment in the `src/main.rs` file.
 
 # License
 
