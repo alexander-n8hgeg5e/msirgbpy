@@ -142,25 +142,65 @@ filehandle = None
 
 # redefine print
 o_print=print
-def print(*z,verbose=True,**zz):
-    global printverbose
-    verbose=False if not verbose else printverbose
+def print(*z,end='',**zz):
+    """
+    The print function.
+    Always the most important function.
+    Therefor it's advisable to make it the most complex one.
+    Obviously the goal is to make it as simple as
+    possible without compromising
+    the essential functionality.
+    """
     global hpos
-    txt = str(*z)
-    l=len(txt)
-    hpos_future=hpos+l
+    txt = str(*z)+end
+    newline_pos_r=-1
+    for i in range(len(txt),-1,-1):
+        if c=="\n":
+            newline_pos_r=i
+            break
+    newline_pos_l=-1
+    for i in range(len(txt)):
+        if c=="\n":
+            newline_pos_l=i
+            break
     w = get_terminal_size().columns
-    if hpos_future > w:
-        o_print()
-        hpos=0
-    o_print(txt,end="",**zz)
-    hpos+=l
+    if newline_pos_r != -1:
+        # newline somewhere, need to check
+        if newline_pos_l + hpos > w:
+            # first newline would break to late
+            # so first make fresh line
+            o_print("\n"+txt)
+            hpos=0
+        else:
+            # need to attend, that
+            # pos is not hpos+len(txt) after print
+            o_print(txt)
+            pos=newline_pos_r
+    else:
+        # no newlines
+        # so pos is hpos+len(txt) after print
+        l=len(txt)
+        hpos_future=hpos+l
+        if hpos_future > w:
+            o_print()
+            hpos=0
+        o_print(txt,end="",**zz)
+        hpos+=l
 
-def inb(port,verbose=False):
+def inb(port,verbose='args'):
+    if verbose=="args" and not args.quiet:
+        verbose_=args.verbose
+    elif verbose is True:
+        verbose_=True
+    elif verbose is False:
+        verbose_=False
+    verbose=verbose_
+    global printverbose
+    verbose=verbose if verbose is False else printverbose
     if verbose:
         global base_port
         offset = base_port - port
-        print("r({:x}{:+d},".format(base_port,offset))
+        print("r({:x}{:+d},".format(verbose,base_port,offset))
     global filehandle
     filehandle.seek(port)
     data = filehandle.read(1)
@@ -174,19 +214,20 @@ def inb(port,verbose=False):
     #    Ok(d[0])
 
 def outb(port,data,verbose='args'):
+    global printverbose
     if verbose=="args" and not args.quiet:
         verbose_=args.verbose
     elif verbose is True:
         verbose_=True
-    else:
+    elif verbose is False:
         verbose_=False
     verbose=verbose_
-    
+    verbose = False if verbose is False else printverbose
     if verbose:
         global base_port
         offset = base_port - port
         print("w({:x}{:+d},".format(base_port,offset))
-    a = inb( base_port + 1)
+    a = inb( base_port + 1,verbose=verbose)
     global filehandle
     filehandle.seek(port)
     t=type(data)
@@ -353,23 +394,24 @@ def run( base_port ):
     write_colour( base_port, BLUECELL, blue)
 
 def print_all(filehandle,base_port):
+    global hpos
     for bank,s,e in [
                         (RGB_BANK,  0xd0,   0x1000),
                         (0x09,      0x20,   0x40),
                         (0x0b,      0x60,   0x70),
                     ]:
-        print("Bank {:02x} ({:02x}...{:02x})=".format(bank, s, e))
-        outb(base_port, 0x07,verbose=False)
+        print("Bank {:02x} ({:02x}...{:02x})=".format(bank, s, e),end="\n")
+        outb(base_port, 0x07, verbose=False )
         outb(base_port + 1, bank,verbose=False)
         for x in range(101,116):
-            outb( base_port, x)
+            outb( base_port, x,verbose=False)
             d = inb( base_port + 1,verbose=False)
             d=d[0]
             if x & 0xf == 0xf :
-                print("[{:02x}".format(d ))
+                print("{:02x}".format(d ))
             else:
-                print("{:02x}] ".format(d ))
-        print()
+                print("{:02x} ".format(d ))
+        o_print()
 
 #fn print_all(f: &mut fs::File, base_port: u16) -> Result<()> {
 #    for &(bank, s, e) in &[(RGB_BANK, 0xd0, 0x100u16), (0x09, 0x20, 0x40), (0x0b, 0x60, 0x70)] {
