@@ -77,6 +77,68 @@ from sys import exit
 from time import sleep
 from pprint import pprint
 
+class unk(list):
+    __doc__="unknown purpose bits"
+    def __init__(self,*z,**zz):
+        if len(z)==1 and hasattr( z[0],'__int__'):
+            super().__init__()
+            ii=z[0]
+            for i in range(ii.bit_length()-1,-1,-1):
+                self.append(ii >> i)
+        elif hasattr( z ,'__iter__'):
+            super().__init__(z)
+        elif type(z[0]) is bytes:
+            super().__init__(z[0])
+
+    def __len__(self):
+        return self._len_()
+
+    def __or__(self,val):
+        i=self.__int__()
+        return i|val
+
+    def __ror__(self,val):
+        i=self.__int__()
+        return val | i 
+
+    def _int_list_(self):
+        b=[]
+        for e in self:
+            if type(e) is bytes:
+                for ee in e:
+                    b.append(ee)
+            else:
+                b.append(e)
+        return b
+
+    def __lshift__(self,val):
+        i=self.__int__()
+        return i << val
+
+    def __int__(self):
+        b=self._int_list_()
+        bb=0
+        for i in range(len(b)):
+            e=b[i]
+            bb|=e<<i
+        return bb
+
+class Bitseq(unk):
+    __doc__="bit seq"
+    def __init__(self,*z,**zz):
+        descr=[]
+        not_descr=[]
+        for v in z:
+            if type(v) is str:
+                descr.append(v)
+            else:
+                not_descr.append(v)
+        self.description='\n'.join(descr)
+        super().__init__(*not_descr,**zz)
+
+class Bit(Bitseq):
+    def __init__(self,*z,**zz):
+        super().__init__(1,*z,**zz)
 
 def parse_args():
     a=ArgumentParser()
@@ -170,6 +232,53 @@ class Thing():
     """
     represents the thing
     """
+
+    for c  in ('R','Red'),('G','Green'),('B','Blue'):
+        for n in range(4,8):
+            for p in ("a","c","e","g"):
+                exec(c[0]+p+str(n)+"=Bitseq(\"Bit-"+str(n)+", "+c[1]+"-color ,timeslot-"+p+"\")")
+        for n in range(4):
+            for p in ("b","d","f","h"):
+                exec(c[0]+p+str(n)+"=Bitseq(\"Bit-"+str(n)+", "+c[1]+"-color ,timeslot-"+p+"\")")
+
+    r_16_cap = Bit( 1, "Makes Red   16-bit capable." )
+    g_16_cap = Bit( 1, "Makes Green 16-bit capable." )
+    b_16_cap = Bit( 1, "Makes Blue  16-bit capable." )
+
+    addresses=  {
+                    "0xe0" : r_16_cap<<7 | g_16_cap<<6 | b_16_cap<<5 |        unk(5)            ,
+                    "0xe1" : unk(8)                                                             ,
+                    "0xe2" : unk(8)                                                             ,
+                    "0xe3" : unk(8)                                                             ,
+                    "0xe4" :     unk(4)    |   smooth_p<<3 | blink_2<<2 | blink_1<<1 | blink_0  ,
+                    "0xe5" :                          unk(8)                                    ,
+                    "0xe6" :                          unk(8)                                    ,
+                    "0xe7" :                          unk(8)                                    ,
+                    "0xe8" :                          unk(8)                                    ,
+                    "0xe9" :                          unk(8)                                    ,
+                    "0xea" :                          unk(8)                                    ,
+                    "0xeb" :                          unk(8)                                    ,
+                    "0xec" :                          unk(8)                                    ,
+                    "0xed" :                          unk(8)                                    ,
+                    "0xee" :                          unk(8)                                    ,
+                    "0xef" :                          unk(8)                                    ,
+                    "0xf0" : Ra7<<7 | Ra6<<6 | Ra5<<5 | Ra4<<4 | Rb3<<3 | Rb2<<2 | Rb1<<1 | Rb0 ,
+                    "0xf1" : Rc7<<7 | Rc6<<6 | Rc5<<5 | Rc4<<4 | Rd3<<3 | Rd2<<2 | Rd1<<1 | Rd0 ,
+                    "0xf2" : Re7<<7 | Re6<<6 | Re5<<5 | Re4<<4 | Rf3<<3 | Rf2<<2 | Rf1<<1 | Rf0 ,
+                    "0xf3" : Rg7<<7 | Rg6<<6 | Rg5<<5 | Rg4<<4 | Rh3<<3 | Rh2<<2 | Rh1<<1 | Rh0 ,
+                    "0xf4" : Ga7<<7 | Ga6<<6 | Ga5<<5 | Ga4<<4 | Gb3<<3 | Gb2<<2 | Gb1<<1 | Gb0 ,
+                    "0xf5" : Gc7<<7 | Gc6<<6 | Gc5<<5 | Gc4<<4 | Gd3<<3 | Gd2<<2 | Gd1<<1 | Gd0 ,
+                    "0xf6" : Ge7<<7 | Ge6<<6 | Ge5<<5 | Ge4<<4 | Gf3<<3 | Gf2<<2 | Gf1<<1 | Gf0 ,
+                    "0xf7" : Gg7<<7 | Gg6<<6 | Gg5<<5 | Gg4<<4 | Gh3<<3 | Gh2<<2 | Gh1<<1 | Gh0 ,
+                    "0xf8" : Ba7<<7 | Ba6<<6 | Ba5<<5 | Ba4<<4 | Bb3<<3 | Bb2<<2 | Bb1<<1 | Bb0 ,
+                    "0xf9" : Bc7<<7 | Bc6<<6 | Bc5<<5 | Bc4<<4 | Bd3<<3 | Bd2<<2 | Bd1<<1 | Bd0 ,
+                    "0xfa" : Be7<<7 | Be6<<6 | Be5<<5 | Be4<<4 | Bf3<<3 | Bf2<<2 | Bf1<<1 | Bf0 ,
+                    "0xfb" : Bg7<<7 | Bg6<<6 | Bg5<<5 | Bg4<<4 | Bh3<<3 | Bh2<<2 | Bh1<<1 | Bh0 ,
+                    "0xfc" :                          unk(8)                                    ,
+                    "0xfd" :                          unk(8)                                    ,
+                    "0xfe" : ti7<<7 | ti6<<6 | ti5<<5 | ti4<<4 | ti3<<3 | ti2<<2 | ti1<<1 | ti0 ,
+                    "0xff" : fa7<<7|fa6<<6|fa5<<5 | inv_b<<4|inv_g<<3|inv_r<<2 | rgb_en1<<1|ti8 ,
+                }
 
     # constants
     RGB_BANK=0x12
